@@ -1,23 +1,40 @@
 from keras.models import Sequential, Model
-from keras.layers import Dense, Activation, Reshape, LeakyReLU
+from keras.layers import Dense, Activation, Reshape, LeakyReLU, Dropout
 from keras.layers import Conv2D, MaxPooling2D, Flatten, BatchNormalization, GlobalAveragePooling2D
 from keras.applications import VGG16
 from constants import S, IMAGE_SIZE
 from loader import load_weights
 import numpy as np
+import sys
 
 
 def create_model():
-	return vgg16() #tiny_yolo_v2()
+	return vgg16()
 
 def vgg16():
 	Vgg = VGG16(weights='imagenet', include_top=False, input_shape=(IMAGE_SIZE[0], IMAGE_SIZE[1], 3))
+	Vgg.summary()
 	for layer in Vgg.layers[:-4]:
 		layer.trainable = False
+		
 	model = Sequential()
 	model.add(Vgg)
+	model.add(Conv2D(512, (3,3), strides=(1,1), padding='same', use_bias=False))
+	model.add(BatchNormalization())
+	model.add(LeakyReLU(alpha=0.1))
+	
+	model.add(Conv2D(128, (1,1), strides=(1,1), padding='same', use_bias=False))
+	model.add(BatchNormalization())
+	model.add(LeakyReLU(alpha=0.1))
+	#30
+	model.add(Conv2D(5, (1,1), strides=(1,1), padding='same'))
+	model.add(Activation('linear'))
+	model.add(Reshape((S, S, 5)))
+	model.summary()
+	return model
+	
 	model.add(Flatten())
-	model.add(Dense(512))
+	model.add(Dense(128))
 	model.add(BatchNormalization())
 	model.add(LeakyReLU(alpha=0.1))
 	model.add(Dense(S * S * 5))
@@ -26,6 +43,7 @@ def vgg16():
 	return model
 
 def tiny_yolo_v2():
+	#scale = 1/8
 	model = Sequential()
 	#0
 	model.add(Conv2D(16, (3,3), strides=(1,1), padding='same', use_bias=False, input_shape=(IMAGE_SIZE[0], IMAGE_SIZE[1],3)))
@@ -62,13 +80,16 @@ def tiny_yolo_v2():
 	model.add(BatchNormalization())
 	model.add(LeakyReLU(alpha=0.1))
 	#27
-	model.add(Conv2D(512, (3,3), strides=(1,1), padding='same', use_bias=False))
+	model.add(Conv2D(1024, (3,3), strides=(1,1), padding='same', use_bias=False))
 	model.add(BatchNormalization())
 	model.add(LeakyReLU(alpha=0.1))
+		
+	#model.add(Conv2D(256, (1,1), strides=(1,1), padding='same', use_bias=False))
+	#model.add(BatchNormalization())
+	#model.add(LeakyReLU(alpha=0.1))
 	#30
-	model.add(Conv2D(4 + 1, (1,1), strides=(1,1), padding='same'))
+	model.add(Conv2D(5, (1,1), strides=(1,1), padding='same'))
 	model.add(Activation('linear'))
-	model.summary()
 	model.add(Reshape((S, S, 5)))
 	model.summary()
 	#[0, 4, 8, 12, 16, 20, 24]
@@ -170,6 +191,10 @@ def darknet19():
 	model.add(LeakyReLU(alpha=0.1))
 	
 	model.add(Conv2D(1024, (3,3), strides=(1,1), padding='same', use_bias=False))
+	model.add(BatchNormalization())
+	model.add(LeakyReLU(alpha=0.1))
+	
+	model.add(Conv2D(128, (1,1), strides=(1,1), padding='same', use_bias=False))
 	model.add(BatchNormalization())
 	model.add(LeakyReLU(alpha=0.1))
 	#filter number is center_x + center_y + width + height + confidence

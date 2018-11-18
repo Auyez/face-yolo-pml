@@ -5,18 +5,20 @@ from loader import preload
 from model import create_model
 from generator import DataGenerator
 from loader import load_image
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageColor
 from keras.models import load_model
 from keras import backend as K
 from keras import optimizers
 from loss import yolo_loss
 from constants import S, IMAGE_SIZE, ANCHOR_BOX, BATCH_SIZE
 from evaluate import evaluate
+import random
 import numpy as np
 import math
 import sys
 import cv2
 
+COLORS = ['red', 'green', 'blue', 'black', 'gray', 'orange', 'yellow', 'brown']
 def sigmoid(x, derivative=False):
   return x*(1-x) if derivative else 1/(1+np.exp(-x))
  
@@ -35,15 +37,21 @@ def convert_prediction(prediction):
 def show_image(output, path):
 	img = Image.open(path)
 	d = ImageDraw.Draw(img)
+	colors = COLORS[:]
 	for i in range(S):
 		for j in range(S):
-			if output[i][j][0] > 0.3:
+			if output[i][j][0] > 0.1:
 				print(output[i][j][0])
 				width = output[i][j][3] * (img.width / S)
 				height = output[i][j][4] * (img.height / S)
 				x = output[i][j][1] * (img.width / S)
 				y = output[i][j][2] * (img.height / S)
-				d.rectangle([x - width/2, y - height/2, x + width/2, y + height/2])
+				if len(colors) == 0:
+					colors = COLORS[:]
+				k = random.randint(0, len(colors)-1)
+				#if width * height > (img.width * 0.2) * (img.height * 0.2):
+				d.rectangle([x - width/2, y - height/2, x + width/2, y + height/2], outline=ImageColor.getrgb(colors[k]))
+				del colors[k]
 	img.show()
 
 def check_loss():
@@ -100,9 +108,10 @@ def detect_on_image(path, model_path = 'models/model_final.rofl'):
 
 def eval_model(model_path = 'models/model_final.rofl'):
 	model = load_model(model_path, custom_objects={'yolo_loss': yolo_loss})
-	X, Y = preload("FDDB/FDDB-rectList.txt", "FDDB")
+	X, Y = preload("WIDER_train_aug.txt", "WIDER_AUG")
+	#X, Y = preload("FDDB/FDDB-rectList.txt", "FDDB")
 	#X, Y = preload("wider_face_val_bbx_gt.txt", "WIDER_val/images")
-	training_generator = DataGenerator(X, Y, 1)
+	training_generator = DataGenerator(X, Y, 16)
 	print(evaluate(model, training_generator, 0.5, 0.3))
 	
 #generate_test_pair_result()

@@ -32,67 +32,49 @@ class Box():
 	def __str__(self):
 		return 'x: {} y: {} w: {} h: {} c: {}'.format(self.xmin, self.ymin, (self.xmax - self.xmin), (self.ymax - self.ymin), self.conf)
 
-		
-class ValidationCallback(callbacks.Callback):
-	def __init__(self, validation_generator, iou_threshold = 0.3, conf_threshold = 0.3, max_count = 3, start_epoch = 60):
-		self.generator = validation_generator
-		self.iou = iou_threshold
-		self.conf = conf_threshold
-		self.decreasing = False
-		self.count = 0
-		self.max_count = max_count
-		self.start_epoch = max(start_epoch-1, 0)
-		self.best = float('-inf')
-		self.monitor_file = open('monitor.txt', 'w')
-		self.monitor_file.write('test\n')
-		self.monitor_file.flush()
-	def on_epoch_end(self, epoch, logs={}):
-		self.monitor_file.write('Epoch: {} Loss: {}\n'.format(epoch, logs.get('loss')))
-		self.monitor_file.flush()
-		if epoch >= self.start_epoch:
-			val = evaluate(self.model, self.generator, self.iou, self.conf)
-			if val >= self.best:
-				self.model.save_weights('weights/darknet_yolo.h5')
-				self.best = val
-				self.decreasing = False
-				self.count = 0
-			else:
-				self.decreasing = True
-				self.count += 1
-			print('Validation score: ' + str(val))
-			self.monitor_file.write('Validation score: ' + str(val) + '\n')
-			self.monitor_file.flush()
-		if self.decreasing and self.count >= self.max_count:
-			self.model.stop_training = True
-			print('Stop training')
-
-			
-# code adapted from https://github.com/experiencor/keras-yolo2	
-def evaluate(model, generator, iou_threshold, conf_threshold):
-	size = len(generator)
+#Evaluate standalone
+def evaluate(model, generator, iou_threshold = 0.5, conf_threshold = 0.3):
+	d, a = extract_predictions(model, generator, conf_threshold)
+	return evaluate_detections(d, a, iou_threshold)
+# code adapted from https://github.com/experiencor/keras-yolo2
+# return value Array of detections, Array of annotations
+# each instance of array contains Boxes for each image
+# !!! Number of images = floor(#images/batch_size) * batch_size
+def extract_predictions(model, generator, conf_threshold = 0.3):
+	size = generator.size()
 	all_detections = [None for i in range(size)]
 	all_annotations = [None for i in range(size)]
-	
+
 	s = time.time()
-	for i in range(size):
+	number_of_batches = len(generator)
+	for i in range(number_of_batches):
 		x, y = generator[i]
 		p = model.predict(x)
-		pred_boxes = to_boxes(p, conf_threshold, False)
-		#print(pred_boxes[0])
-		true_boxes = to_boxes(y, conf_threshold, True)
-		#print(true_boxes[0])
-		pred_boxes.sort(key=lambda x: x.conf)
-		true_boxes.sort(key=lambda x: x.conf)
-		all_detections[i] = pred_boxes
-		all_annotations[i] = true_boxes
+		#iterate over images in batch
+		for j in range(generator.batch_size):
+			#send one image from batch
+			pred_boxes = to_boxes(p[j], conf_threshold, False)
+			true_boxes = to_boxes(y[j], conf_threshold, True)
+			pred_boxes.sort(key=lambda x: x.conf)
+			true_boxes.sort(key=lambda x: x.conf)
+			# step is equal to Batch size and j is offset of image in batch
+			all_detections[i * generator.batch_size + j] = pred_boxes
+			all_annotations[i * generator.batch_size + j] = true_boxes
+		p_bar = math.floor(i/number_of_batches * 30)
+		sys.stdout.write('\r{}/{} [{}{}]'.format(i, number_of_batches, p_bar * "=", (30 - p_bar) * "."))
+		sys.stdout.flush()
 	e = time.time()
-	#print(e - s)
+	print(e - s)
+	return all_detections, all_annotations
+
+# Computes AP for detections
+# Input: array of detections for each image, array of annotations for each image
+def evaluate_detections(all_detections, all_annotations, iou_threshold = 0.5):
 	false_positives = np.zeros((0,))
 	true_positives = np.zeros((0,))
 	scores = np.zeros((0,))
 	num_annotations = 0
-	
-	s = time.time()
+	size = len(all_annotations)
 	for i in range(size):
 		num_annotations += len(all_annotations[i])
 		detected = []
@@ -122,12 +104,11 @@ def evaluate(model, generator, iou_threshold, conf_threshold):
 	precision = true_positives / (true_positives + false_positives)
 	
 	average_precission = compute_ap(recall, precision)
-	e = time.time()
-	#print(e - s)
 	return average_precission
 
-def to_boxes(p, conf, isTrue):
-	prediction = p[0]
+# Get bounding boxes
+# x,y,w,h defined relative to cell size (Absolute Width / Cell Width)
+def to_boxes(prediction, conf, isTrue):
 	boxes = []
 	for i in range(S):
 		for j in range(S):
@@ -164,3 +145,39 @@ def compute_ap(recall, precision):
     # and sum (\Delta recall) * prec
     ap = np.sum((mrec[i + 1] - mrec[i]) * mpre[i + 1])
     return ap 
+	
+class ValidationCallback(callbacks.Callback):
+	def __init__(self, validation_generator, iou_threshold = 0.3, conf_threshold = 0.3, max_count = 3, start_epoch = 60):
+		self.generator = validation_generator
+		self.iou = iou_threshold
+		self.conf = conf_threshold
+		self.decreasing = False
+		self.count = 0
+		self.max_count = max_count
+		self.start_epoch = max(start_epoch-1, 0)
+		self.best = float('-inf')
+		
+		self.monitor_file = open('monitor.txt', 'w')
+		self.monitor_file.write('test\n')
+		self.monitor_file.flush()
+		
+	def on_epoch_end(self, epoch, logs={}):
+		self.monitor_file.write('Epoch: {} Loss: {}\n'.format(epoch, logs.get('loss')))
+		self.monitor_file.flush()
+		if epoch >= self.start_epoch:
+			val = evaluate(self.model, self.generator, self.iou, self.conf)
+			#detections, annotations = extract_predictions(self.model, self.generator, self.iou, self.conf)
+			if val >= self.best:
+				self.model.save_weights('weights/darknet_yolo.h5')
+				self.best = val
+				self.decreasing = False
+				self.count = 0
+			else:
+				self.decreasing = True
+				self.count += 1
+			print('Validation score: ' + str(val))
+			self.monitor_file.write('Validation score: ' + str(val) + '\n')
+			self.monitor_file.flush()
+		if self.decreasing and self.count >= self.max_count:
+			self.model.stop_training = True
+			print('Stop training')

@@ -13,4 +13,8 @@ if len(sys.argv) > 1:
 	model.load_weights(sys.argv[1])
 adam = optimizers.Adam(lr=1e-4, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0, amsgrad=False)
 model.compile(loss=yolo_loss, optimizer = adam)
-model.save('models/model_final.rofl')
+name = 'model.net'
+if len(sys.argv) > 2:
+	name = sys.argv[2]
+model.save('models/' + name)
+print('Saved model to {}'.format('models/' + name))

@@ -1,5 +1,7 @@
 from PIL import Image
+import PIL
 from constants import IMAGE_SIZE
+from random import shuffle
 import numpy as np
 import sys
 
@@ -61,7 +63,7 @@ def load_image(path):
 	return img
 	
 def preload(file_list, images_folder):
-	print('processing input...')
+	print('Processing input...')
 	X = []
 	Y = []
 	f = open(file_list, 'r')
@@ -71,35 +73,24 @@ def preload(file_list, images_folder):
 	img_width = 0
 	img_height = 0
 	boxes = []
+	#full_set = []
 	for i, line in enumerate(f):
 		#sys.stdout.write("Images loaded: %d\r" % (len(X) + 1) )
 		#sys.stdout.flush()
 		if state == PATH:
+			#full_set.append(line)
 			img = Image.open(images_folder + '/' + line.strip())
 			img_width = img.width
 			img_height = img.height
 			X.append(images_folder + '/' + line.strip())
-			#file = open( 'annotations/' + line.strip().split('/')[-1] + '.xml', 'w')
-			#file.write('<annotation>\n')
-			#file.write('<#filename>' + line.strip() + '</#filename>\n')
-			#file.write('<width>' + str(img_width) + '</width>\n')
-			#file.write('<height>' + str(img_height) + '</height>\n')
 			state = BOX_COUNT			
 		elif state == BOX_COUNT:
+			#full_set[-1] += line
 			max_faces = int(line)
 			faces = 0
 			state = BOX
 		elif state == BOX:
 			line = line.split()
-			#file.write('<object>\n')
-			#file.write('<name>face</name>\n')
-			#file.write('<bndbox>\n')
-			#file.write('\t<xmin>' + str(int(line[0])) + '</xmin>\n')
-			#file.write('\t<xmax>' + str(int(line[0]) + int(line[2])) + '</xmax>\n')
-			#file.write('\t<ymin>' + str(int(line[1]))+ '</ymin>\n')
-			#file.write('\t<ymax>' + str(int(line[1]) + int(line[3]))+ '</ymax>\n')
-			#file.write('</bndbox>\n')
-			#file.write('</object>\n')
 			w_coef = IMAGE_SIZE[0] / img_width
 			h_coef = IMAGE_SIZE[1] / img_height
 			w = int(line[2]) * w_coef
@@ -110,10 +101,88 @@ def preload(file_list, images_folder):
 			
 			faces += 1
 			if faces == max_faces:
-				#file.write('</annotation>\n')
-				#file.close()
 				Y.append(boxes)
 				boxes = []
 				state = PATH
-	#sys.stdout.write(str(len(X)) + '\n')
+	print('Images loaded: {}'.format(len(X)))
 	return X, Y
+
+def augment(file_list, images_folder):
+	print('Augmentation...')
+	annotations = []
+	f = open(file_list, 'r')
+	state = PATH
+	faces = 0
+	max_faces = 0
+	img_width = 0
+	img_height = 0
+	boxes = []
+	X = []
+	truth = open('WIDER_train_aug.txt', 'w')
+	OUTPUT_DIR = 'WIDER_AUG'
+	for i, line in enumerate(f):
+		if state == PATH:
+			img = Image.open(images_folder + '/' + line.strip())
+			img_width = img.width
+			img_height = img.height
+			X.append(images_folder + '/' + line.strip())
+			annotations.append('{}.jpg\n'.format(len(X) + 1))
+			state = BOX_COUNT			
+		elif state == BOX_COUNT:
+			#full_set[-1] += line
+			annotations[-1] += line
+			max_faces = int(line)
+			faces = 0
+			state = BOX
+		elif state == BOX:
+			annotations[-1] += line
+			line = line.split()
+			w = int(line[2])
+			h = int(line[3])
+			x = int(line[0])
+			y = int(line[1])
+			boxes.append((x, y, w, h))
+			
+			faces += 1
+			if faces == max_faces:
+				truth.write(annotations[-1])
+				img = Image.open(X[-1])
+				number = len(X) + 1
+				img.save('{}/{}.jpg'.format(OUTPUT_DIR, number))
+				
+				#Flip
+				flipped = img.transpose(Image.FLIP_LEFT_RIGHT)
+				truth.write('{}{}.jpg\n'.format(number, 'f'))
+				truth.write(str(len(boxes)) + '\n')
+				for b in boxes:
+					x = img_width - b[0] - b[2]
+					truth.write('{} {} {} {} \n'.format(x, b[1], b[2], b[3]))
+				flipped.save('{}/{}{}.jpg'.format(OUTPUT_DIR, number, 'f'))
+				
+				#90
+				rotated = img.transpose(Image.ROTATE_90)		
+				truth.write('{}{}.jpg\n'.format(number, 'r9'))
+				truth.write(str(len(boxes)) + '\n')
+				for b in boxes:
+					x = b[1]
+					y = img_width - b[0] - b[2]
+					truth.write('{} {} {} {} \n'.format(x, y, b[3], b[2]))
+				rotated.save('{}/{}{}.jpg'.format(OUTPUT_DIR, number, 'r9'))
+				
+				
+				#180
+				rotated = img.transpose(Image.ROTATE_180)
+				truth.write('{}{}.jpg\n'.format(number, 'r18'))
+				truth.write(str(len(boxes)) + '\n')
+				for b in boxes:
+					x = img_width - b[0] - b[2]
+					y = img_height - b[1] - b[3]
+					truth.write('{} {} {} {} \n'.format(x, y, b[2], b[3]))
+				rotated.save('{}/{}{}.jpg'.format(OUTPUT_DIR, number, 'r18'))
+				img.close()
+				flipped.close()
+				rotated.close()
+				boxes = []
+				state = PATH
+	truth.close()
+	print('Images loaded: {}'.format(len(X)))

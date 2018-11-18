@@ -22,7 +22,10 @@ class DataGenerator(keras.utils.Sequence):
 		
 	def __len__(self):
 		return int(len(self.images)/self.batch_size)
-		
+	
+	def size(self):
+		return int(len(self.images)/self.batch_size) * self.batch_size
+
 	def _load_image(self, path):
 		img = Image.open(path)
 		img =  img.resize(IMAGE_SIZE, Image.ANTIALIAS)
