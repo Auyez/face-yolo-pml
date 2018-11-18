@@ -5,9 +5,9 @@ from constants import BATCH_SIZE, S, IMAGE_SIZE, ANCHOR_BOX
 import numpy as np
 import math
 #0.006
-OBJECT_SCALE = 5#5
-NOOBJECT_SCALE = 1#1
-COORD_SCALE = 1#1
+OBJECT_SCALE = 1#5
+NOOBJECT_SCALE = 0.5#1
+COORD_SCALE = 5#1
 
 def yolo_loss(y_true, y_pred):
 	grid = np.zeros((BATCH_SIZE, S, S, 2))

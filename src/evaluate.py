@@ -60,11 +60,13 @@ def extract_predictions(model, generator, conf_threshold = 0.3):
 			# step is equal to Batch size and j is offset of image in batch
 			all_detections[i * generator.batch_size + j] = pred_boxes
 			all_annotations[i * generator.batch_size + j] = true_boxes
-		p_bar = math.floor(i/number_of_batches * 30)
-		sys.stdout.write('\r{}/{} [{}{}]'.format(i, number_of_batches, p_bar * "=", (30 - p_bar) * "."))
+		p_bar = math.ceil(i/number_of_batches * 30)
+		e = time.time()
+		sys.stdout.write('\r{}/{} [{}{}] - {}s'.format(i, number_of_batches, p_bar * "=", (30 - p_bar) * ".", int(e - s)))
 		sys.stdout.flush()
 	e = time.time()
-	print(e - s)
+	sys.stdout.write('{}/{} [{}] - {}s\n'.format(i, number_of_batches, 30 * "=", int(e-s)))
+	sys.stdout.flush()
 	return all_detections, all_annotations
 
 # Computes AP for detections

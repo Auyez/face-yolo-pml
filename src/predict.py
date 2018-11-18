@@ -40,7 +40,7 @@ def show_image(output, path):
 	colors = COLORS[:]
 	for i in range(S):
 		for j in range(S):
-			if output[i][j][0] > 0.1:
+			if output[i][j][0] > 0.3:
 				print(output[i][j][0])
 				width = output[i][j][3] * (img.width / S)
 				height = output[i][j][4] * (img.height / S)
@@ -108,8 +108,8 @@ def detect_on_image(path, model_path = 'models/model_final.rofl'):
 
 def eval_model(model_path = 'models/model_final.rofl'):
 	model = load_model(model_path, custom_objects={'yolo_loss': yolo_loss})
-	X, Y = preload("WIDER_train_aug.txt", "WIDER_AUG")
-	#X, Y = preload("FDDB/FDDB-rectList.txt", "FDDB")
+	#X, Y = preload("WIDER_train_aug.txt", "WIDER_AUG")
+	X, Y = preload("FDDB/FDDB-rectList.txt", "FDDB")
 	#X, Y = preload("wider_face_val_bbx_gt.txt", "WIDER_val/images")
 	training_generator = DataGenerator(X, Y, 16)
 	print(evaluate(model, training_generator, 0.5, 0.3))

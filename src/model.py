@@ -1,7 +1,7 @@
 from keras.models import Sequential, Model
-from keras.layers import Dense, Activation, Reshape, LeakyReLU, Dropout
+from keras.layers import Dense, Activation, Reshape, LeakyReLU, Dropout, Input
 from keras.layers import Conv2D, MaxPooling2D, Flatten, BatchNormalization, GlobalAveragePooling2D
-from keras.applications import VGG16
+import keras.applications as applications
 from constants import S, IMAGE_SIZE
 from loader import load_weights
 import numpy as np
@@ -9,10 +9,34 @@ import sys
 
 
 def create_model():
-	return vgg16()
+	return tiny_yolo_v2()
 
+def mobile():
+	mobile = applications.MobileNetV2(weights= "imagenet", include_top=False)
+	
+	input_layer = Input(shape = (IMAGE_SIZE[0], IMAGE_SIZE[1], 3))
+	output_layer = mobile(input_layer)
+	output_layer = Conv2D(128, (3,3), strides=(1,1), padding='same', use_bias=False)(output_layer)
+	output_layer = BatchNormalization()(output_layer)
+	output_layer = LeakyReLU(alpha=0.1)(output_layer)
+	
+	
+	output_layer = Conv2D(5, (1,1), strides=(1,1), padding='same', use_bias=False)(output_layer)
+	output_layer = Reshape((S, S, 5))(output_layer)
+	#output_layer = Flatten()(output_layer)
+	#output_layer = Dense(2048)(output_layer)
+	#output_layer = Dropout(0.5)(output_layer)
+	#output_layer = LeakyReLU(alpha=0.1)(output_layer)
+	#output_layer = Dense(S * S * 5)(output_layer)
+	#output_layer = Reshape((S, S, 5))(output_layer)
+	
+	new_mobile = Model(input_layer, output_layer)
+	new_mobile.summary()
+	
+	return new_mobile
+	#sys.exit()
 def vgg16():
-	Vgg = VGG16(weights='imagenet', include_top=False, input_shape=(IMAGE_SIZE[0], IMAGE_SIZE[1], 3))
+	Vgg = applications.VGG16(weights='imagenet', include_top=False, input_shape=(IMAGE_SIZE[0], IMAGE_SIZE[1], 3))
 	Vgg.summary()
 	for layer in Vgg.layers[:-4]:
 		layer.trainable = False
@@ -42,6 +66,57 @@ def vgg16():
 	model.summary()
 	return model
 
+def tiny_yolo_v1():
+	model = Sequential()
+	model.add(Conv2D(16, (3,3), strides=(1,1), padding='same', use_bias=False, input_shape=(IMAGE_SIZE[0], IMAGE_SIZE[1],3)))
+	model.add(BatchNormalization())
+	model.add(LeakyReLU(alpha=0.1))
+	model.add(MaxPooling2D(pool_size=(2,2)))
+	
+	
+	model.add(Conv2D(32, (3,3), strides=(1,1), padding='same', use_bias=False))
+	model.add(BatchNormalization())
+	model.add(LeakyReLU(alpha=0.1))
+	model.add(MaxPooling2D(pool_size=(2,2)))
+	
+	
+	model.add(Conv2D(64, (3,3), strides=(1,1), padding='same', use_bias=False))
+	model.add(BatchNormalization())
+	model.add(LeakyReLU(alpha=0.1))
+	model.add(MaxPooling2D(pool_size=(2,2)))
+	
+	
+	model.add(Conv2D(128, (3,3), strides=(1,1), padding='same', use_bias=False))
+	model.add(BatchNormalization())
+	model.add(LeakyReLU(alpha=0.1))
+	model.add(MaxPooling2D(pool_size=(2,2)))
+	
+	
+	model.add(Conv2D(256, (3,3), strides=(1,1), padding='same', use_bias=False))
+	model.add(BatchNormalization())
+	model.add(LeakyReLU(alpha=0.1))
+	model.add(MaxPooling2D(pool_size=(2,2)))
+	
+	model.add(Conv2D(512, (3,3), strides=(1,1), padding='same', use_bias=False))
+	model.add(BatchNormalization())
+	model.add(LeakyReLU(alpha=0.1))
+	model.add(MaxPooling2D(pool_size=(2,2)))
+	
+	model.add(Conv2D(1024, (3,3), strides=(1,1), padding='same', use_bias=False))
+	model.add(BatchNormalization())
+	model.add(LeakyReLU(alpha=0.1))
+	
+	model.add(Conv2D(256, (3,3), strides=(1,1), padding='same', use_bias=False))
+	model.add(BatchNormalization())
+	model.add(LeakyReLU(alpha=0.1))
+	
+	model.add(Flatten())
+	model.add(Dense(S * S * 5))
+	model.add(Reshape((S, S, 5)))
+	model.summary()
+	return model
+	
+	
 def tiny_yolo_v2():
 	#scale = 1/8
 	model = Sequential()
@@ -74,23 +149,26 @@ def tiny_yolo_v2():
 	model.add(Conv2D(512, (3,3), strides=(1,1), padding='same', use_bias=False))
 	model.add(BatchNormalization())
 	model.add(LeakyReLU(alpha=0.1))
-	model.add(MaxPooling2D(pool_size=(2,2), strides=(1,1), padding='same'))
+	#model.add(MaxPooling2D(pool_size=(2,2), strides=(1,1), padding='same'))
+	model.add(MaxPooling2D(pool_size=(2,2)))
 	#24
 	model.add(Conv2D(1024, (3,3), strides=(1,1), padding='same', use_bias=False))
 	model.add(BatchNormalization())
 	model.add(LeakyReLU(alpha=0.1))
 	#27
-	model.add(Conv2D(1024, (3,3), strides=(1,1), padding='same', use_bias=False))
+	model.add(Conv2D(256, (3,3), strides=(1,1), padding='same', use_bias=False))
 	model.add(BatchNormalization())
 	model.add(LeakyReLU(alpha=0.1))
-		
+	
+	model.add(Flatten())
+	model.add(Dense(S * S * 5))
+	model.add(Reshape((S, S, 5)))
 	#model.add(Conv2D(256, (1,1), strides=(1,1), padding='same', use_bias=False))
 	#model.add(BatchNormalization())
 	#model.add(LeakyReLU(alpha=0.1))
 	#30
-	model.add(Conv2D(5, (1,1), strides=(1,1), padding='same'))
-	model.add(Activation('linear'))
-	model.add(Reshape((S, S, 5)))
+	#model.add(Conv2D(5, (1,1), strides=(1,1), padding='same'))
+	#model.add(Activation('linear'))
 	model.summary()
 	#[0, 4, 8, 12, 16, 20, 24]
 	return model

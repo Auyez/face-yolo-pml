@@ -27,7 +27,7 @@ class ChangeLearningRate(callbacks.Callback):
 			K.set_value(self.model.optimizer.lr, 1e-5)
 
 #X, Y = preload("WIDER_train_aug.txt", "WIDER_AUG")
-X, Y = preload("FDDB_train.txt", "FDDB_augmented")
+X, Y = preload("FDDB/FDDB-rectList.txt", "FDDB")
 training_generator = DataGenerator(X, Y, BATCH_SIZE)
 X, Y = preload("FDDB/FDDB-val.txt", "FDDB")
 #X, Y = preload("wider_val.txt", "WIDER_train/images")
@@ -37,11 +37,11 @@ adam = optimizers.Adam(lr=0.5e-4, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay
 #adam = optimizers.SGD(lr=1e-4, decay=0.0005, momentum=0.9)
 model = create_model()
 #model.load_weights('weights/darknet_yolo.h5')
-#load_weights(model, 'weights/darknet.weights')
+load_weights(model, 'weights/darknet.weights')
 #Freeze all classifier layers
-#print(model.layers[-9])
+print(model.layers[-5])
 #print(model.layers[-12])
-#for layer in model.layers[:-12]:
+#for layer in model.layers[:-5]:
 #	layer.trainable = False
 model.compile(loss = yolo_loss, optimizer=adam)
 #model = load_model('model_final.rofl', custom_objects={'yolo_loss': yolo_loss})
