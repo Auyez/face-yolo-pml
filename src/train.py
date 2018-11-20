@@ -31,18 +31,15 @@ X, Y = preload("WIDER_train_aug.txt", "WIDER_AUG")
 training_generator = DataGenerator(X, Y, BATCH_SIZE)
 #X, Y = preload("FDDB/FDDB-val.txt", "FDDB")
 X, Y = preload("wider_val.txt", "WIDER_train/images")
-validation_generator = DataGenerator(X, Y, 16)
+validation_generator = DataGenerator(X, Y, BATCH_SIZE)
 
 adam = optimizers.Adam(lr=0.5e-4, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0, amsgrad=False)
 #adam = optimizers.SGD(lr=1e-4, decay=0.0005, momentum=0.9)
 model = create_model()
-#model.load_weights('weights/darknet_yolo.h5')
-load_weights(model, 'weights/darknet.weights')
+model.load_weights('weights/darknet_yolo.h5')
+#load_weights(model, 'weights/darknet.weights')
 #Freeze all classifier layers
-print(model.layers[-9])
-#print(model.layers[-12])
-#for layer in model.layers[:-9]:
-#	layer.trainable = False
+
 model.compile(loss = yolo_loss, optimizer=adam)
 #model = load_model('model_final.rofl', custom_objects={'yolo_loss': yolo_loss})
 callback = callbacks.ModelCheckpoint('weights/weights.{epoch:02d}.hdf',
@@ -63,5 +60,5 @@ model.fit_generator(generator=training_generator,
 					max_queue_size=8,
 					callbacks = [lr, validation, callback, t_nan],
 					use_multiprocessing=False,
-					initial_epoch = 0)
+					initial_epoch = 23)
 model.save('models/darknet-tiny.net')

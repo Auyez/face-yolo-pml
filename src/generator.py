@@ -9,7 +9,7 @@ from constants import IMAGE_SIZE, S
 
 def get_grid_index(x):
 	r = int(np.floor(x))
-	return r if r < 13 else 12
+	return r if r < S else S - 1
 
 class DataGenerator(keras.utils.Sequence):
 	def __init__(self, images, annotations, batch_size=32, shuffle=True, X_as_images=True):
@@ -55,18 +55,16 @@ class DataGenerator(keras.utils.Sequence):
 		
 	def _generate_truth(self, index):
 		y = np.zeros((S, S, 5))
-		for i in range(S):
-			for j in range(S):
-				for a in self.annotations[index]:
-					dx = IMAGE_SIZE[0] / S
-					dy = IMAGE_SIZE[1] / S
-					center_x = a[0] / dx
-					center_y = a[1] / dy
-					gridx = get_grid_index(center_x)
-					gridy = get_grid_index(center_y)
-					y[gridx][gridy][0] = 1.0
-					y[gridx][gridy][1] = center_x
-					y[gridx][gridy][2] = center_y
-					y[gridx][gridy][3] = a[2] / dx
-					y[gridx][gridy][4] = a[3] / dy
+		for a in self.annotations[index]:
+			dx = IMAGE_SIZE[0] / S
+			dy = IMAGE_SIZE[1] / S
+			center_x = a[0] / dx
+			center_y = a[1] / dy
+			gridx = get_grid_index(center_x)
+			gridy = get_grid_index(center_y)
+			y[gridx][gridy][0] = 1.0
+			y[gridx][gridy][1] = center_x
+			y[gridx][gridy][2] = center_y
+			y[gridx][gridy][3] = a[2] / dx
+			y[gridx][gridy][4] = a[3] / dy
 		return y

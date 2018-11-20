@@ -159,17 +159,22 @@ def tiny_yolo_v2():
 	model.add(Conv2D(256, (3,3), strides=(1,1), padding='same', use_bias=False))
 	model.add(BatchNormalization())
 	model.add(LeakyReLU(alpha=0.1))
-	
+	#######
 	model.add(Flatten())
 	model.add(Dense(S * S * 5))
 	model.add(Reshape((S, S, 5)))
-	#model.add(Conv2D(256, (1,1), strides=(1,1), padding='same', use_bias=False))
-	#model.add(BatchNormalization())
-	#model.add(LeakyReLU(alpha=0.1))
-	#30
-	#model.add(Conv2D(5, (1,1), strides=(1,1), padding='same'))
-	#model.add(Activation('linear'))
 	model.summary()
+	return model
+	####
+	#30
+	'''model.add(Conv2D(5, (1,1), strides=(1,1), use_bias=False))
+	model.add(BatchNormalization())
+	model.add(LeakyReLU(alpha=0.1))
+	
+	model.add(Flatten())
+	model.add(Dense(S*S*5))
+	model.add(Reshape((S, S, 5)))'''
+	#model.summary()
 	#[0, 4, 8, 12, 16, 20, 24]
 	return model
 

@@ -3,6 +3,7 @@ from keras import callbacks
 from constants import S, ANCHOR_BOX, IMAGE_SIZE
 import numpy as np
 import math
+from PIL import Image
 import time
 import sys
  
@@ -33,14 +34,14 @@ class Box():
 		return 'x: {} y: {} w: {} h: {} c: {}'.format(self.xmin, self.ymin, (self.xmax - self.xmin), (self.ymax - self.ymin), self.conf)
 
 #Evaluate standalone
-def evaluate(model, generator, iou_threshold = 0.5, conf_threshold = 0.3):
-	d, a = extract_predictions(model, generator, conf_threshold)
+def evaluate(model, generator, iou_threshold = 0.5, conf_threshold = 0.3, convert = True):
+	d, a = extract_predictions(model, generator, conf_threshold, convert)
 	return evaluate_detections(d, a, iou_threshold)
 # code adapted from https://github.com/experiencor/keras-yolo2
 # return value Array of detections, Array of annotations
 # each instance of array contains Boxes for each image
 # !!! Number of images = floor(#images/batch_size) * batch_size
-def extract_predictions(model, generator, conf_threshold = 0.3):
+def extract_predictions(model, generator, conf_threshold = 0.3, convert = True):
 	size = generator.size()
 	all_detections = [None for i in range(size)]
 	all_annotations = [None for i in range(size)]
@@ -49,12 +50,21 @@ def extract_predictions(model, generator, conf_threshold = 0.3):
 	number_of_batches = len(generator)
 	for i in range(number_of_batches):
 		x, y = generator[i]
-		p = model.predict(x)
+		if not convert:
+			images = [Image.open(path) for path in x]
+			for im_index, img in enumerate(images):
+				if img.mode != 'RGB':
+					images[im_index] = img.convert('RGB')
+			x = np.array([ np.array(im) for im in images])
+			print(x.shape)
+			p = model.predict(x)
+		else:
+			p = model.predict(x)
 		#iterate over images in batch
 		for j in range(generator.batch_size):
 			#send one image from batch
-			pred_boxes = to_boxes(p[j], conf_threshold, False)
-			true_boxes = to_boxes(y[j], conf_threshold, True)
+			pred_boxes = to_boxes(p[j], conf_threshold, convert)
+			true_boxes = to_boxes(y[j], conf_threshold, False)
 			pred_boxes.sort(key=lambda x: x.conf)
 			true_boxes.sort(key=lambda x: x.conf)
 			# step is equal to Batch size and j is offset of image in batch
@@ -64,9 +74,6 @@ def extract_predictions(model, generator, conf_threshold = 0.3):
 		e = time.time()
 		sys.stdout.write('\r{}/{} [{}{}] - {}s'.format(i, number_of_batches, p_bar * "=", (30 - p_bar) * ".", int(e - s)))
 		sys.stdout.flush()
-	e = time.time()
-	sys.stdout.write('{}/{} [{}] - {}s\n'.format(i, number_of_batches, 30 * "=", int(e-s)))
-	sys.stdout.flush()
 	return all_detections, all_annotations
 
 # Computes AP for detections
@@ -110,15 +117,15 @@ def evaluate_detections(all_detections, all_annotations, iou_threshold = 0.5):
 
 # Get bounding boxes
 # x,y,w,h defined relative to cell size (Absolute Width / Cell Width)
-def to_boxes(prediction, conf, isTrue):
+def to_boxes(prediction, conf, convert):
 	boxes = []
 	for i in range(S):
 		for j in range(S):
-			if not isTrue:
+			if convert:
 				x = sigmoid(prediction[i][j][1]) + i
 				y = sigmoid(prediction[i][j][2]) + j
-				w = math.exp(prediction[i][j][3]) * ANCHOR_BOX[0]
-				h = math.exp(prediction[i][j][4]) * ANCHOR_BOX[1]
+				w = math.exp(prediction[i][j][3])# * ANCHOR_BOX[0]
+				h = math.exp(prediction[i][j][4])# * ANCHOR_BOX[1]
 				c = sigmoid(prediction[i][j][0])
 			else:
 				x = prediction[i][j][1]

@@ -3,6 +3,7 @@ plaidml.keras.install_backend()
 import pickle
 from loader import preload
 from model import create_model
+from haar import HaarModel
 from generator import DataGenerator
 from loader import load_image
 from PIL import Image, ImageDraw, ImageColor
@@ -30,7 +31,7 @@ def convert_prediction(prediction):
 						grid[k][i][j] = np.array([i, j])
 					
 	xy = sigmoid(prediction[..., 1:3]) + grid
-	wh = np.exp(prediction[..., 3:5]) * np.reshape(ANCHOR_BOX, [1,1,1,2])
+	wh = np.exp(prediction[..., 3:5])# * np.reshape(ANCHOR_BOX, [1,1,1,2])
 	conf = np.expand_dims(sigmoid(prediction[..., 0]), axis=-1)
 	return np.block([conf, xy, wh])
 
@@ -75,15 +76,15 @@ def check_loss():
 def predict_random_entry():
 	X, Y = preload("FDDB/FDDB-rectList.txt", "FDDB")
 	training_generator = DataGenerator(X, Y, BATCH_SIZE, X_as_images=False)
-	model = load_model('models/model_final.rofl', custom_objects={'yolo_loss': yolo_loss})
+	model = load_model('models/model.net', custom_objects={'yolo_loss': yolo_loss})
 	x, y = training_generator.__getitem__(0)
 	
 	#Feed to network
 	inp = np.zeros((BATCH_SIZE, IMAGE_SIZE[0], IMAGE_SIZE[1], 3))
 	inp[0] = np.array(load_image(x[0]))/255.0
 	print(inp.shape)
-	P = model.predict(inp)
-	print(P)
+	#P = model.predict(inp)
+	show_image(y[0], x[0])
 	#Get ground truth
 	T = np.zeros((BATCH_SIZE, S, S, 5))
 	T = y
@@ -95,24 +96,32 @@ def predict_random_entry():
 	with open("temp/img.path", "w") as f:
 		f.write(x[0])
 
-def detect_on_image(path, model_path = 'models/model_final.rofl'):
-	model = load_model(model_path, custom_objects={'yolo_loss': yolo_loss})
+def detect_on_image(path, model_path = None):
+	if model_path == None:
+		model = HaarModel()
+	else:
+		model = load_model(model_path, custom_objects={'yolo_loss': yolo_loss})
 	img = np.zeros((1, IMAGE_SIZE[0], IMAGE_SIZE[1], 3))
+	print(path)
 	example = load_image(path)
-	img[0] = np.array(example)/255
-	r = model.predict(img)
+	#img = np.zeros((1, example.height, example.width, 3))
+	img[0] = np.array(example) / 255.0
+	P = model.predict(img)
 	#print(np.argmax(r))
-	P = convert_prediction(model.predict_on_batch(img))
+	P = convert_prediction(P)
 	#print(P)
 	show_image(P[0], path)
 
-def eval_model(model_path = 'models/model_final.rofl'):
-	model = load_model(model_path, custom_objects={'yolo_loss': yolo_loss})
-	#X, Y = preload("WIDER_train_aug.txt", "WIDER_AUG")
-	X, Y = preload("FDDB/FDDB-rectList.txt", "FDDB")
+def eval_model(model_path = 'models/model_final.rofl', convert = True):
+	if convert:
+		model = load_model(model_path, custom_objects={'yolo_loss': yolo_loss})
+	else:
+		model = model_path
+	X, Y = preload("WIDER_val.txt", "WIDER_train/images")
+	#X, Y = preload("FDDB/FDDB-rectList.txt", "FDDB")
 	#X, Y = preload("wider_face_val_bbx_gt.txt", "WIDER_val/images")
-	training_generator = DataGenerator(X, Y, 16)
-	print(evaluate(model, training_generator, 0.5, 0.3))
+	training_generator = DataGenerator(X, Y, 1, True, convert)
+	print(evaluate(model, training_generator, 0.5, 0.3, convert))
 	
 #generate_test_pair_result()
 #check_loss()
@@ -122,7 +131,11 @@ def eval_model(model_path = 'models/model_final.rofl'):
 #eval_model()
 if len(sys.argv) > 1:
 	if sys.argv[1] == 'eval':
-		eval_model(sys.argv[2])
+		if sys.argv[2] == 'cv2':
+			m = HaarModel()
+			eval_model(m, False)
+		else:
+			eval_model(sys.argv[2])
 	elif sys.argv[1] == 'model':
 		print('Loading ' + sys.argv[2])
 		detect_on_image(sys.argv[3], sys.argv[2])

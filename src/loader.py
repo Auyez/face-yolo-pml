@@ -1,6 +1,5 @@
 from PIL import Image
-import PIL
-from constants import IMAGE_SIZE
+from constants import IMAGE_SIZE, S
 from random import shuffle
 import numpy as np
 import sys
@@ -101,10 +100,13 @@ def preload(file_list, images_folder):
 			
 			faces += 1
 			if faces == max_faces:
-				Y.append(boxes)
+				if faces > S * S:
+					del X[-1]
+				else:
+					Y.append(boxes)
 				boxes = []
 				state = PATH
-	print('Images loaded: {}'.format(len(X)))
+	print('Images loaded: {}  {}'.format(len(X), len(Y)))
 	return X, Y
 
 def augment(file_list, images_folder):

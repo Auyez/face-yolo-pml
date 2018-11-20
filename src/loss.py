@@ -16,7 +16,7 @@ def yolo_loss(y_true, y_pred):
 				for j in range(S):
 					grid[k][i][j] = np.array([i, j])
 	pred_xy = K.sigmoid(y_pred[..., 1:3]) + K.variable(grid) #, dtype='float64') #
-	pred_wh = K.exp(y_pred[..., 3:5]) * K.variable(np.reshape(ANCHOR_BOX, [1,1,1,2])) #, dtype='float64')
+	pred_wh = K.exp(y_pred[..., 3:5]) #* K.variable(np.reshape(ANCHOR_BOX, [1,1,1,2])) #, dtype='float64')
 	pred_conf = K.sigmoid(y_pred[..., 0])
 	
 	true_xy = y_true[..., 1:3]
