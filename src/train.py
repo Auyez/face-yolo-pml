@@ -26,17 +26,18 @@ class ChangeLearningRate(callbacks.Callback):
 		if epoch == 600:
 			K.set_value(self.model.optimizer.lr, 1e-5)
 
-X, Y = preload("WIDER_train_aug.txt", "WIDER_AUG")
-#X, Y = preload("FDDB/FDDB-rectList.txt", "FDDB")
+model = create_model()
+#X, Y = preload("WIDER_train/wider_train.txt", "WIDER_train/images")
+X, Y = preload("FDDB/FDDB_original.txt", "FDDB")
 training_generator = DataGenerator(X, Y, BATCH_SIZE)
 #X, Y = preload("FDDB/FDDB-val.txt", "FDDB")
-X, Y = preload("wider_val.txt", "WIDER_train/images")
+#X, Y = preload("wider_val.txt", "WIDER_train/images")
+sys.exit()
 validation_generator = DataGenerator(X, Y, BATCH_SIZE)
 
 adam = optimizers.Adam(lr=0.5e-4, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0, amsgrad=False)
 #adam = optimizers.SGD(lr=1e-4, decay=0.0005, momentum=0.9)
-model = create_model()
-model.load_weights('weights/darknet_yolo.h5')
+#model.load_weights('weights/darknet_yolo.h5')
 #load_weights(model, 'weights/darknet.weights')
 #Freeze all classifier layers
 
@@ -51,7 +52,7 @@ callback = callbacks.ModelCheckpoint('weights/weights.{epoch:02d}.hdf',
 lr = ChangeLearningRate()
 t_nan = callbacks.TerminateOnNaN()
 #start validation on epoch 60
-validation = ValidationCallback(validation_generator, 0.5, 0.3, 1300, 3)
+validation = ValidationCallback(validation_generator, 0.5, 0.5, 1300, 3)
 
 #lr.last_weigths = 35
 model.fit_generator(generator=training_generator,

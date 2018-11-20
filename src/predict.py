@@ -35,8 +35,13 @@ def convert_prediction(prediction):
 	conf = np.expand_dims(sigmoid(prediction[..., 0]), axis=-1)
 	return np.block([conf, xy, wh])
 
-def show_image(output, path):
-	img = Image.open(path)
+def show_image(output, path = None, img = None):
+	if path != None:
+		img = Image.open(path)
+	else:
+		img = Image.fromarray(img)
+	if img.mode != 'RGB':
+		img = img.convert('RGB')
 	d = ImageDraw.Draw(img)
 	colors = COLORS[:]
 	for i in range(S):
@@ -99,16 +104,18 @@ def predict_random_entry():
 def detect_on_image(path, model_path = None):
 	if model_path == None:
 		model = HaarModel()
+		example = Image.open(path)
+		img = np.zeros((1, example.height, example.width, 3))
 	else:
 		model = load_model(model_path, custom_objects={'yolo_loss': yolo_loss})
-	img = np.zeros((1, IMAGE_SIZE[0], IMAGE_SIZE[1], 3))
+		img = np.zeros((1, IMAGE_SIZE[0], IMAGE_SIZE[1], 3))
+		example = load_image(path)
 	print(path)
-	example = load_image(path)
-	#img = np.zeros((1, example.height, example.width, 3))
 	img[0] = np.array(example) / 255.0
 	P = model.predict(img)
 	#print(np.argmax(r))
-	P = convert_prediction(P)
+	if model_path != None:
+		P = convert_prediction(P)
 	#print(P)
 	show_image(P[0], path)
 
@@ -117,9 +124,9 @@ def eval_model(model_path = 'models/model_final.rofl', convert = True):
 		model = load_model(model_path, custom_objects={'yolo_loss': yolo_loss})
 	else:
 		model = model_path
-	X, Y = preload("WIDER_val.txt", "WIDER_train/images")
-	#X, Y = preload("FDDB/FDDB-rectList.txt", "FDDB")
-	#X, Y = preload("wider_face_val_bbx_gt.txt", "WIDER_val/images")
+	#X, Y = preload("WIDER_val.txt", "WIDER_train/images")
+	#X, Y = preload("FDDB/FDDB_original.txt", "FDDB")
+	X, Y = preload("WIDER_val/wider_face_val_bbx_gt.txt", "WIDER_val/images")
 	training_generator = DataGenerator(X, Y, 1, True, convert)
 	print(evaluate(model, training_generator, 0.5, 0.3, convert))
 	

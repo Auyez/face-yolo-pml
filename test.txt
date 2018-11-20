@@ -1,9 +1,0 @@
-import numpy as np
-from PIL import Image
-
-t = Image.open('12.jpg')
-r = Image.open('322.jpg')
-
-tensor = np.array([ np.array(i) for i in [t,r]])
-for i in tensor:
-	print(i.shape)

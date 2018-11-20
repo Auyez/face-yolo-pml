@@ -8,7 +8,7 @@ class HaarModel():
 	def __init__(self):
 		self.classifier = cv2.CascadeClassifier('src/haarcascade_frontalface_default.xml')
 	def predict(self, batch):
-		#batch = batch * 255
+		batch = batch * 255
 		B = batch.shape[0]
 		out = np.zeros((B, S, S, 5))
 		for i in range(B):
@@ -22,8 +22,8 @@ class HaarModel():
 			faces = self.classifier.detectMultiScale(
 				gray,
 				scaleFactor=1.1,
-				minNeighbors=5,
-				minSize=(30, 30)
+				minNeighbors=10,
+				minSize=(10, 10)
 			)
 			for (x,y,w,h) in faces:		
 				dx = img_width / S

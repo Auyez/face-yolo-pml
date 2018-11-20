@@ -13,12 +13,14 @@ def show_graph(path):
 		else:
 			values = [float(s) for s in re.findall(r"[-+]?\d*\.\d+|\d+", line)]
 			if i > 3 and (i - 3) % 2 != 0:
-				val.append(values[0])
+				val.append(values[0] * 100)
 			else:
 				epochs.append(values[0])
 				loss.append(values[1])
 	#plt.plot(epochs, loss)
-	plt.plot(epochs, val)
+	plt.xlabel("Epochs")
+	plt.ylabel("Loss")
+	plt.plot(epochs, loss)
 	plt.show()
 	
 if len(sys.argv) > 1:

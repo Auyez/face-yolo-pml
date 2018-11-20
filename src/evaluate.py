@@ -6,7 +6,7 @@ import math
 from PIL import Image
 import time
 import sys
- 
+import matplotlib.pyplot as plt
  
 def sigmoid(x):
 	return 1/(1 + math.exp(-x))
@@ -56,7 +56,7 @@ def extract_predictions(model, generator, conf_threshold = 0.3, convert = True):
 				if img.mode != 'RGB':
 					images[im_index] = img.convert('RGB')
 			x = np.array([ np.array(im) for im in images])
-			print(x.shape)
+			#print(x.shape)
 			p = model.predict(x)
 		else:
 			p = model.predict(x)
@@ -111,7 +111,8 @@ def evaluate_detections(all_detections, all_annotations, iou_threshold = 0.5):
 	
 	recall = true_positives / num_annotations
 	precision = true_positives / (true_positives + false_positives)
-	
+	#plt.plot(recall, precision)
+	#plt.show()
 	average_precission = compute_ap(recall, precision)
 	return average_precission
 

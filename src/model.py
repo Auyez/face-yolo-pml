@@ -6,7 +6,7 @@ from constants import S, IMAGE_SIZE
 from loader import load_weights
 import numpy as np
 import sys
-
+from keras.utils import plot_model 
 
 def create_model():
 	return tiny_yolo_v2()
@@ -163,7 +163,7 @@ def tiny_yolo_v2():
 	model.add(Flatten())
 	model.add(Dense(S * S * 5))
 	model.add(Reshape((S, S, 5)))
-	model.summary()
+	#model.summary()
 	return model
 	####
 	#30
