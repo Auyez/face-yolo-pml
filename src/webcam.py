@@ -30,9 +30,18 @@ def getBoxes(output):
 	return boxes
 
 video_capture = cv2.VideoCapture(0)
+
 model = load_model('models/model.net', custom_objects={'yolo_loss': yolo_loss})
 t = np.zeros((1, 448, 448, 3))
 model.predict(t)
+
+ret, frame = video_capture.read()
+
+h, w, c = frame.shape
+if w != 640 and h != 480:
+	print("Correcting WH")
+	dx = w / 7
+	dy = h / 7
 
 while True:
 	ret, frame = video_capture.read()

@@ -1,6 +1,5 @@
 import plaidml.keras
 plaidml.keras.install_backend()
-import pickle
 from loader import preload
 from model import create_model
 from haar import HaarModel
@@ -9,7 +8,6 @@ from loader import load_image
 from PIL import Image, ImageDraw, ImageColor
 from keras.models import load_model
 from keras import backend as K
-from keras import optimizers
 from loss import yolo_loss
 from constants import S, IMAGE_SIZE, ANCHOR_BOX, BATCH_SIZE
 from evaluate import evaluate
@@ -60,47 +58,6 @@ def show_image(output, path = None, img = None):
 				del colors[k]
 	img.show()
 
-def check_loss():
-	y = {}
-	t = {}
-	p = {}
-	with open("temp/t.tensor", "rb") as f:
-		t = pickle.load(f)
-	with open("temp/y.tensor", "rb") as f:
-		y = pickle.load(f)
-	with open("temp/img.path", "r") as f:
-		path = f.read()
-	r = convert_prediction(y)
-	#print(y)
-	#show_image(r[0], path)
-	np.set_printoptions(precision=9)
-	np.set_printoptions(suppress=True)
-	print(K.eval(yolo_loss(K.variable(t), K.variable(y))))
-		
-
-def predict_random_entry():
-	X, Y = preload("FDDB/FDDB-rectList.txt", "FDDB")
-	training_generator = DataGenerator(X, Y, BATCH_SIZE, X_as_images=False)
-	model = load_model('models/model.net', custom_objects={'yolo_loss': yolo_loss})
-	x, y = training_generator.__getitem__(0)
-	
-	#Feed to network
-	inp = np.zeros((BATCH_SIZE, IMAGE_SIZE[0], IMAGE_SIZE[1], 3))
-	inp[0] = np.array(load_image(x[0]))/255.0
-	print(inp.shape)
-	#P = model.predict(inp)
-	show_image(y[0], x[0])
-	#Get ground truth
-	T = np.zeros((BATCH_SIZE, S, S, 5))
-	T = y
-	#Save
-	with open("temp/t.tensor", "wb") as f:
-		pickle.dump(T, f, pickle.HIGHEST_PROTOCOL)
-	with open("temp/y.tensor", "wb") as f:
-		pickle.dump(P, f, pickle.HIGHEST_PROTOCOL)
-	with open("temp/img.path", "w") as f:
-		f.write(x[0])
-
 def detect_on_image(path, model_path = None):
 	if model_path == None:
 		model = HaarModel()
@@ -113,10 +70,8 @@ def detect_on_image(path, model_path = None):
 	print(path)
 	img[0] = np.array(example) / 255.0
 	P = model.predict(img)
-	#print(np.argmax(r))
 	if model_path != None:
 		P = convert_prediction(P)
-	#print(P)
 	show_image(P[0], path)
 
 def eval_model(model_path = 'models/model_final.rofl', convert = True):
@@ -130,12 +85,7 @@ def eval_model(model_path = 'models/model_final.rofl', convert = True):
 	training_generator = DataGenerator(X, Y, 1, True, convert)
 	print(evaluate(model, training_generator, 0.5, 0.3, convert))
 	
-#generate_test_pair_result()
-#check_loss()
-#search_nan_entry()
-#predict_random_entry()
-#check_loss()
-#eval_model()
+
 if len(sys.argv) > 1:
 	if sys.argv[1] == 'eval':
 		if sys.argv[2] == 'cv2':
@@ -147,4 +97,7 @@ if len(sys.argv) > 1:
 		print('Loading ' + sys.argv[2])
 		detect_on_image(sys.argv[3], sys.argv[2])
 	else:
-		detect_on_image(sys.argv[1])
+		if sys.argv[1] == 'cv2':
+			detect_on_image(sys.argv[2])
+		else:
+			detect_on_image(sys.argv[1], 'models/model.net')
