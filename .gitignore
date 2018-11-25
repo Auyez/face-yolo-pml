@@ -3,7 +3,6 @@ weights/*
 /WIDER_train
 /WIDER_val
 /temp
-models/*
 /FDDB
 *.hdf
 *.rofl
